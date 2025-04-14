@@ -74,6 +74,9 @@ include { BAM_VARIANT_CALLING_TUMOR_ONLY_ALL                } from '../../subwor
 // Variant calling on tumor/normal pair
 include { BAM_VARIANT_CALLING_SOMATIC_ALL                   } from '../../subworkflows/local/bam_variant_calling_somatic_all/main'
 
+// Additional BIC processing
+include { SAMTOOSL_VARDICT as BIC_SAMTOOLS_VARDICT         } from '../../subworkflows/bic/samtools_vardict/main'
+
 // POST VARIANTCALLING: e.g. merging
 include { POST_VARIANTCALLING                               } from '../../subworkflows/local/post_variantcalling/main'
 
@@ -775,6 +778,20 @@ workflow SAREK {
             params.joint_mutect2,
             params.wes
         )
+
+        // BIC variant calling
+        //
+        BIC_SAMTOOLS_VARDICT(
+            cram_variant_calling_pair,
+            fasta,
+            fasta_fai,
+            intervals_bed_combined
+        )
+
+        versions = versions.mix(BIC_SAMTOOLS_VARDICT.out.versions)
+
+        //
+        // end BIC variant calling
 
         // POST VARIANTCALLING
         POST_VARIANTCALLING(BAM_VARIANT_CALLING_GERMLINE_ALL.out.vcf_all,
