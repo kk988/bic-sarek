@@ -782,6 +782,8 @@ workflow SAREK {
         // BIC variant calling
         //
         BIC_SAMTOOLS_VARDICT(
+            cram_variant_calling_normal_to_cross,
+            cram_variant_calling_pair_to_cross,
             cram_variant_calling_pair,
             fasta,
             fasta_fai,
@@ -789,6 +791,11 @@ workflow SAREK {
         )
 
         versions = versions.mix(BIC_SAMTOOLS_VARDICT.out.versions)
+
+        //bic_vcf_to_post = BAM_VARIANT_CALLING_SOMATIC_ALL.out.vcf_all
+        //bic_vcf_to_post = bic_vcf_to_post.mix(BIC_SAMTOOLS_VARDICT.out.vardict_vcf)
+
+        //BIC_POSTPROCESSING(bic_vcf_to_post)
 
         //
         // end BIC variant calling
