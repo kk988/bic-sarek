@@ -27,26 +27,26 @@ workflow SAMTOOSL_VARDICT {
     // CRAM_TO_BAM(cram_crai, fasta, fasta_fai) // This will convert the cram to bam
     // First set up channel for cram to bam
     CRAM_TO_BAM_NORM (
-        norm_cram.map{ key, meta, cram, crai -> [meta, cram, crai]},
+        norm_cram.map{ _key, meta, cram, crai -> [meta, cram, crai]},
         fasta,
         fasta_fai)
 
     CRAM_TO_BAM_TUM(
-        tumor_cram.map{ key, meta, cram, crai -> [meta, cram, crai]},
+        tumor_cram.map{ _key, meta, cram, crai -> [meta, cram, crai]},
         fasta,
         fasta_fai)
 
     // This will run vardictjava on the bam files
     normal_input = CRAM_TO_BAM_NORM.out.bam.join(CRAM_TO_BAM_NORM.out.bai).map{ meta, bam, bai -> [meta.patient + meta.sample, meta, bam, bai]}
     tumor_input = CRAM_TO_BAM_TUM.out.bam.join(CRAM_TO_BAM_TUM.out.bai).map{ meta, bam, bai -> [meta.patient, meta, bam, bai]}
-    
+
     // Using the meta from cram_crai to merge the bams together with the "grouped" meta
-    norm_join_prep = cram_crai.map{ meta, nc, nci, tc, tci -> [ meta.patient + meta.normal_id, meta ] }
-    
+    norm_join_prep = cram_crai.map{ meta, _nc, _nci, _tc, _tci -> [ meta.patient + meta.normal_id, meta ] }
+
     norm_input = norm_join_prep.join(normal_input)
 
     //reset the join key so tumors can be joined
-    tumor_join_prep = norm_input.map{ oldkey, meta1, meta2, nb, nbi -> [meta1.patient, meta1, nb, nbi]}
+    tumor_join_prep = norm_input.map{ _oldkey, meta1, _meta2, nb, nbi -> [meta1.patient, meta1, nb, nbi]}
     combined_input = (tumor_join_prep.cross(tumor_input)
         .map{ normal, tumor ->
             def meta = [:]
@@ -58,7 +58,7 @@ workflow SAMTOOSL_VARDICT {
             meta.tumor_id   = tumor[1].sample
 
         [meta, [normal[2], tumor[2]], [normal[3], tumor[3]]]}).combine(intervals)
-    
+
     VARDICTJAVA(
         combined_input,
         fasta,

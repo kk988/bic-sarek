@@ -6,7 +6,7 @@ process POST_STRELKA {
         'https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/5a/5acacb55c52bec97c61fd34ffa8721fce82ce823005793592e2a80bf71632cd0/data':
         'community.wave.seqera.io/library/bcftools:1.21--4335bec1d7b44d11' }"
 
-    input: 
+    input:
     tuple val(meta), path(snv_vcf), path(indel_vcf)
     path(target_bed)
 
@@ -15,16 +15,18 @@ process POST_STRELKA {
     path "versions.yml"                    , emit: versions
 
     script:
-    """ 
-    
+    def normal = "${meta.patient}_${meta.normal_id}"
+    def tumor  = "${meta.patient}_${meta.tumor_id}"
+    """
+
     bcftoools concat ${snv_vcf} ${indel_vcf} -a | bgzip -c - > intermediate.vcf.gz
     tabix -p vcf intermediate.vcf.gz
 
-    bcftools view -R $TARGET_BED ${TMP}.vcf.gz \
+    bcftools view -R ${target_bed} intermediate.vcf.gz \
         | bcftools sort - \
         | bcftools norm -m- \
-        | perl -pe 's/NORMAL/'${NORMAL}'/ if /^#C/; s/TUMOR/'${TUMOR}'/ if /^#C/' > ${meta.tumor_id}___${meta.normal_id}_strelka.vcf
-    
+        | perl -pe 's/NORMAL/'${normal}'/ if /^#C/; s/TUMOR/'${tumor}'/ if /^#C/' > ${meta.tumor_id}___${meta.normal_id}_strelka.vcf
+
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
         bcftools: \$(bcftools --version 2>&1 | head -n1 | sed 's/^.*bcftools //; s/ .*\$//')
