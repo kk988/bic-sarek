@@ -6,8 +6,9 @@
 include { VARDICTJAVA } from '../../../modules/nf-core/vardictjava/main'
 include { SAMTOOLS_CONVERT as CRAM_TO_BAM_NORM } from '../../../modules/nf-core/samtools/convert/main'
 include { SAMTOOLS_CONVERT as CRAM_TO_BAM_TUM } from '../../../modules/nf-core/samtools/convert/main'
+include { TABIX_TABIX as TABIX_VARDICT } from '../../../modules/nf-core/tabix/tabix/main'
 
-workflow SAMTOOSL_VARDICT {
+workflow SAMTOOLS_VARDICT {
     take:
     norm_cram    // channels [meta, cram, crai]
     tumor_cram   // channel: [meta, cram, crai]
@@ -64,14 +65,19 @@ workflow SAMTOOSL_VARDICT {
         fasta,
         fasta_fai)
 
+    // tabix to index
+    TABIX_VARDICT(
+        VARDICTJAVA.out.vcf
+    )
+
     // get workflow output ready
-    vardict_vcf = VARDICTJAVA.out.vcf
+    vardict_vcf = VARDICTJAVA.out.vcf.join(TABIX_VARDICT.out.tbi)
     versions = versions.mix(CRAM_TO_BAM_NORM.out.versions)
     versions = versions.mix(CRAM_TO_BAM_TUM.out.versions)
     versions = versions.mix(VARDICTJAVA.out.versions)
 
     emit:
-    vardict_vcf // channel: [meta, vcf]
+    vardict_vcf // channel: [meta, vcf, tbi]
     versions // channel: [versions]
 
 }

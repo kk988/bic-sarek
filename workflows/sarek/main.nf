@@ -75,7 +75,8 @@ include { BAM_VARIANT_CALLING_TUMOR_ONLY_ALL                } from '../../subwor
 include { BAM_VARIANT_CALLING_SOMATIC_ALL                   } from '../../subworkflows/local/bam_variant_calling_somatic_all/main'
 
 // Additional BIC processing
-include { SAMTOOSL_VARDICT as BIC_SAMTOOLS_VARDICT         } from '../../subworkflows/bic/samtools_vardict/main'
+include { SAMTOOLS_VARDICT as BIC_SAMTOOLS_VARDICT         } from '../../subworkflows/bic/samtools_vardict/main'
+include { BIC_POSTPROCESSING                               } from '../../subworkflows/bic/bic_postprocess/main'
 
 // POST VARIANTCALLING: e.g. merging
 include { POST_VARIANTCALLING                               } from '../../subworkflows/local/post_variantcalling/main'
@@ -792,17 +793,55 @@ workflow SAREK {
 
         versions = versions.mix(BIC_SAMTOOLS_VARDICT.out.versions)
 
-        //bic_vcf_to_post = BAM_VARIANT_CALLING_SOMATIC_ALL.out.vcf_all
-        //bic_vcf_to_post = bic_vcf_to_post.mix(BIC_SAMTOOLS_VARDICT.out.vardict_vcf)
-
-        //BIC_POSTPROCESSING(bic_vcf_to_post)
-
-        //
         // end BIC variant calling
+        // BIC POST PROCESSING
+
+        if (params.normalize_vcf_bed) {
+            normalize_tag_bed = Channel.fromPath(params.normalize_vcf_bed, checkIfExists: true).map{it -> [ [ id:it.baseName ], it ] }
+        } else {
+            normalize_tag_bed = Channel.empty()
+        }
+
+        strelka_vcf_grouped = BAM_VARIANT_CALLING_SOMATIC_ALL.strelka_vcf
+            .groupTuple() // Group VCF files by meta
+            .map { meta, vcf_files ->
+                // Construct the corresponding .tbi paths for each VCF file
+                def tbi_files = vcf_files.collect { vcf_file ->
+                    def tbi_file = file(vcf_file.toString() + ".tbi") // Construct the .tbi path
+                    tbi_file.exists() ? tbi_file : null
+                    tbi_file
+                }
+                [meta, vcf_files, tbi_files] // Return the desired structure
+            }
+
+        mutect_vcf_tbi = BAM_VARIANT_CALLING_SOMATIC_ALL.mutect2_vcf.map { meta, vcf_file ->
+                def tbi_file = file(vcf_file.toString() + ".tbi") // Construct the path to the index file
+                if (!tbi_file.exists()) {
+                    error "Index file not found for VCF: ${vcf_file}"
+                }
+                [meta, vcf_file, tbi_file] // Add the index file to the channel
+            }
+
+        freebayes_vcf_tbi = BAM_VARIANT_CALLING_SOMATIC_ALL.freebayes_vcf.map { meta, vcf_file ->
+                def tbi_file = file(vcf_file.toString() + ".tbi") // Construct the path to the index file
+                if (!tbi_file.exists()) {
+                    error "Index file not found for VCF: ${vcf_file}"
+                }
+                [meta, vcf_file, tbi_file] // Add the index file to the channel
+            }
+
+        BIC_POSTPROCESSING(strelka_vcf_grouped,
+            mutect_vcf_tbi,
+            freebayes_vcf_tbi,
+            BIC_SAMTOOLS_VARDICT.out.vardict_vcf,
+            normalize_tag_bed)
+
+        versions.mix(BIC_POSTPROCESSING.out.versions)
+
+        // end of BIC Post Processing
 
         // POST VARIANTCALLING
-        POST_VARIANTCALLING(BAM_VARIANT_CALLING_GERMLINE_ALL.out.vcf_all,
-                            params.concatenate_vcfs)
+        POST_VARIANTCALLING(BAM_VARIANT_CALLING_GERMLINE_ALL.out.vcf_all)
 
         // Gather vcf files for annotation and QC
         vcf_to_annotate = Channel.empty()
