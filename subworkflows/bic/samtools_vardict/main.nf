@@ -58,7 +58,7 @@ workflow SAMTOOLS_VARDICT {
             meta.sex        = normal[1].sex
             meta.tumor_id   = tumor[1].sample
 
-        [meta, [normal[2], tumor[2]], [normal[3], tumor[3]]]}).combine(intervals)
+        [meta, [tumor[2], normal[2]], [tumor[3], normal[3]]]}).combine(intervals)
 
     VARDICTJAVA(
         combined_input,
@@ -71,7 +71,7 @@ workflow SAMTOOLS_VARDICT {
     )
 
     // get workflow output ready
-    vardict_vcf = VARDICTJAVA.out.vcf.join(TABIX_VARDICT.out.tbi)
+    vardict_vcf = (VARDICTJAVA.out.vcf).join(TABIX_VARDICT.out.tbi).map{ meta, vcf, tbi -> [meta + [ variantcaller: 'vardict' ], vcf, tbi] }
     versions = versions.mix(CRAM_TO_BAM_NORM.out.versions)
     versions = versions.mix(CRAM_TO_BAM_TUM.out.versions)
     versions = versions.mix(VARDICTJAVA.out.versions)
