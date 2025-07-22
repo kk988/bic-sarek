@@ -17,6 +17,9 @@ workflow MUS_VAR{
 
     main:
     versions = Channel.empty()
+    params.normalize_vcf_bed = getGenomeAttribute('normalize_vcf_bed')
+    params.vep_cache = getGenomeAttribute('vep_cache')
+    params.vep_config = getGenomeAttribute('vep_config')
 
     // BIC variant calling
     //
@@ -74,7 +77,8 @@ workflow MUS_VAR{
         vardict_vcf,
         normalize_tag_bed,
         fasta,
-        params.vep_cache)
+        params.vep_cache
+    )
 
     rdas = BIC_POSTPROCESSING.out.rdas.map{ _meta, rda -> [ rda ] }.collect()
     FILTER_MAFS(rdas)
@@ -85,4 +89,24 @@ workflow MUS_VAR{
 
     emit:
     versions // channel [meta, versions]
+}
+
+/*
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    FUNCTIONS
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+*/
+
+//
+// Get attribute from genome config file e.g. fasta
+// Copied from `main.nf`
+//
+
+def getGenomeAttribute(attribute) {
+    if (params.genomes && params.genome && params.genomes.containsKey(params.genome)) {
+        if (params.genomes[ params.genome ].containsKey(attribute)) {
+            return params.genomes[ params.genome ][ attribute ]
+        }
+    }
+    return null
 }

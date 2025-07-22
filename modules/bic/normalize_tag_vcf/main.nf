@@ -18,23 +18,30 @@ process NORMALIZE_TAG_VCF {
     path "versions.yml"                   , emit: versions
 
     script:
+    // if first file is gzipped, then use .gz extension in file0
+    def gz = vcf.toString().endsWith('.gz') ? '.gz' : ''
+
+    def int_file0 = "temp_input.vcf${gz}"
     def int_file1 = "temp.vcf"
     def int_file2 = "temp2.vcf"
     def int_file3 = "temp3.vcf"
     def output_file = "${vcf.baseName}_tagged.vcf"
     def sort = task.ext.sort_cmd ?: ''
     def post_cmd = task.ext.post_cmd ?: "cp ${int_file2} ${int_file3}"
+    def pre_cmd = task.ext.pre_cmd ?: "cp ${vcf} ${int_file0} && cp ${tbi} ${int_file0}.tbi"
 
     // if tbi does not end with .tbi, then use tabix
     def tbi_file = tbi.toString()
     def tbi_ext = tbi_file.substring(tbi_file.lastIndexOf('.'))
     def tbi_is_tbi = tbi_ext == '.tbi'
-    def create_input_index = tbi_is_tbi ? "" : "tabix ${vcf}"
+    def create_input_index = tbi_is_tbi ? "" : "tabix -f ${int_file0}"
 
     """
+    ${pre_cmd}
+
     ${create_input_index}
 
-    bcftools view -R ${target_bed} ${vcf} \
+    bcftools view -R ${target_bed} ${int_file0} \
         ${sort} \
         | bcftools norm -m- \
         > ${int_file1}
@@ -46,7 +53,7 @@ process NORMALIZE_TAG_VCF {
 
     ${post_cmd}
 
-    rm ${int_file1} ${int_file2}
+    rm ${int_file0} ${int_file1} ${int_file2}
     mv ${int_file3} ${output_file}
 
     cat <<-END_VERSIONS > versions.yml
