@@ -1,7 +1,11 @@
 // Additional BIC processing
-include { SAMTOOLS_VARDICT as BIC_SAMTOOLS_VARDICT         } from '../samtools_vardict/main'
-include { BIC_POSTPROCESSING                               } from '../bic_postprocess/main'
-include { FILTER_MAFS                                      } from '../../../modules/bic/filter_mafs/main'
+include { SAMTOOLS_VARDICT as BIC_SAMTOOLS_VARDICT } from '../samtools_vardict/main'
+include { BIC_POSTPROCESSING                       } from '../bic_postprocess/main'
+include { FILTER_MAFS                              } from '../../../modules/bic/filter_mafs/main'
+include { GATK4_COLLECTALIGNMENTSUMMARYMETRICS     } from '../../../modules/bic/gatk4/collectalignmentsummarymetrics/main'
+include { GATK4_COLLECTINSERTSIZEMETRICS           } from '../../../modules/bic/gatk4/collectinsertsizemetrics/main'
+include { GATK4_COLLECTHSMETRICS                   } from '../../../modules/bic/gatk4/collecthsmetrics/main'
+include { BIC_SAMPLE_QC                            } from '../../../modules/bic/bic_sample_qc/main'
 
 workflow MUS_VAR{
     take:
@@ -14,12 +18,62 @@ workflow MUS_VAR{
     vcf_strelka
     vcf_mutect2
     vcf_freebayes
+    bic_qc_reports
 
     main:
     versions = Channel.empty()
     params.normalize_vcf_bed = getGenomeAttribute('normalize_vcf_bed')
     params.vep_cache = getGenomeAttribute('vep_cache')
     params.vep_config = getGenomeAttribute('vep_config')
+    params.vep_fasta = getGenomeAttribute('vep_fasta')
+    params.fasta_bed = getGenomeAttribute('fasta_bed')
+    def targets_ilist = getGenomeAttribute('targets_ilist')
+    def bait_ilist = getGenomeAttribute('bait_ilist')
+
+    if (!targets_ilist || !file(targets_ilist).exists() || !bait_ilist || !file(bait_ilist).exists()) {
+        log.warn "No targets_ilist or bait_ilist found for genome ${params.genome} in the genomes config file, skipping hsmetrics"
+    }
+    else {
+        GATK4_COLLECTHSMETRICS(
+            (cram_variant_calling_normal_to_cross
+                .mix(cram_variant_calling_pair_to_cross))
+                .map{ _meta_pt, meta, cram, crai -> [ meta, cram, crai ] },
+            bait_ilist,
+            targets_ilist,
+            fasta,
+            fasta_fai
+        )
+        versions = versions.mix(GATK4_COLLECTHSMETRICS.out.versions)
+        bic_qc_reports = bic_qc_reports.mix(GATK4_COLLECTHSMETRICS.out.metrics.collect{ _meta, report  -> [ report ] })
+    }
+
+    // Alignment QC
+    //
+    GATK4_COLLECTALIGNMENTSUMMARYMETRICS(
+        (cram_variant_calling_normal_to_cross
+            .mix(cram_variant_calling_pair_to_cross))
+            .map{ _meta_pt, meta, cram, crai -> [ meta, cram, crai ] },
+        fasta,
+        fasta_fai
+    )
+    versions = versions.mix(GATK4_COLLECTALIGNMENTSUMMARYMETRICS.out.versions)
+    bic_qc_reports = bic_qc_reports.mix(GATK4_COLLECTALIGNMENTSUMMARYMETRICS.out.metrics.collect{ _meta, report  -> [ report ] })
+
+    GATK4_COLLECTINSERTSIZEMETRICS(
+        (cram_variant_calling_normal_to_cross
+            .mix(cram_variant_calling_pair_to_cross))
+            .map{ _meta_pt, meta, cram, crai -> [ meta, cram, crai ] },
+        fasta,
+        fasta_fai
+    )
+    versions = versions.mix(GATK4_COLLECTINSERTSIZEMETRICS.out.versions)
+    bic_qc_reports = bic_qc_reports.mix(GATK4_COLLECTINSERTSIZEMETRICS.out.metrics.collect{ _meta, report  -> [ report ] })
+
+    BIC_SAMPLE_QC(
+        bic_qc_reports.collect(),
+        params.input,
+        params.qc_control_csv
+    )
 
     // BIC variant calling
     //
@@ -77,7 +131,8 @@ workflow MUS_VAR{
         vardict_vcf,
         normalize_tag_bed,
         fasta,
-        params.vep_cache
+        params.vep_cache,
+        params.vep_fasta
     )
 
     rdas = BIC_POSTPROCESSING.out.rdas.map{ _meta, rda -> [ rda ] }.collect()

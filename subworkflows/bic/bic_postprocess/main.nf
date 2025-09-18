@@ -17,6 +17,7 @@ workflow BIC_POSTPROCESSING {
     normalize_tag_bed // channel [meta, bed]
     fasta // channel [meta, fasta]
     vep_cache // path vep_cache
+    vep_fasta // path vep_fasta
 
     main:
     versions = Channel.empty()
@@ -39,7 +40,6 @@ workflow BIC_POSTPROCESSING {
     //vardict
     TAG_VCF_VARDICT(vardict_vcf, normalize_tag_bed)
 
-    def vep_fasta = "${vep_cache}/mus_musculus/102_GRCm38/Mus_musculus.GRCm38.dna.toplevel.fa.gz"
     vcf_to_maf_input = Channel.empty().mix(TAG_VCF_STRELKA.out.vcf, TAG_VCF_MUTECT2.out.vcf, TAG_VCF_FREEBAYES.out.vcf, TAG_VCF_VARDICT.out.vcf)
 
     VCF2MAF(vcf_to_maf_input, vep_fasta, vep_cache)
@@ -53,7 +53,7 @@ workflow BIC_POSTPROCESSING {
     merged_maf = MERGE_MAFS.out.merged_maf
     rdas = MERGE_MAFS.out.rdata
 
-    
+
 
     versions = versions.mix(
         BCFTOOLS_CONCAT_STRELKA.out.versions,
