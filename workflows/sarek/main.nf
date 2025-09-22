@@ -74,6 +74,9 @@ include { BAM_VARIANT_CALLING_TUMOR_ONLY_ALL                } from '../../subwor
 // Variant calling on tumor/normal pair
 include { BAM_VARIANT_CALLING_SOMATIC_ALL                   } from '../../subworkflows/local/bam_variant_calling_somatic_all/main'
 
+// BIC Analysis Paths
+include { MUS_VAR                                           } from '../../subworkflows/bic/mus_var/main'
+
 // POST VARIANTCALLING: e.g. merging
 include { POST_VARIANTCALLING                               } from '../../subworkflows/local/post_variantcalling/main'
 
@@ -146,6 +149,7 @@ workflow SAREK {
     ch_multiqc_files = Channel.empty()
     multiqc_report   = Channel.empty()
     reports          = Channel.empty()
+    bic_qc_reports   = Channel.empty()
     versions         = Channel.empty()
 
     // PREPROCESSING
@@ -408,6 +412,10 @@ workflow SAREK {
 
             // Gather QC reports
             reports = reports.mix(BAM_MARKDUPLICATES_SPARK.out.reports.collect{ meta, report -> [ report ] })
+            // BIC qc reports only needs MD metrics file
+            bic_qc_reports = bic_qc_reports.mix(BAM_MARKDUPLICATES_SPARK.out.reports
+                .filter { _meta, report -> report.name.endsWith('.metrics') }
+                .collect { _meta, report -> [ report ] })
 
             // Gather used softwares versions
             versions = versions.mix(BAM_MARKDUPLICATES_SPARK.out.versions)
@@ -438,6 +446,10 @@ workflow SAREK {
 
             // Gather QC reports
             reports = reports.mix(BAM_MARKDUPLICATES.out.reports.collect{ meta, report -> [ report ] })
+            // BIC qc reports only needs MD metrics file
+            bic_qc_reports = bic_qc_reports.mix(BAM_MARKDUPLICATES.out.reports
+                .filter { _meta, report -> report.name.endsWith('.metrics') }
+                .collect { _meta, report -> [ report ] })
 
             // Gather used softwares versions
             versions = versions.mix(BAM_MARKDUPLICATES.out.versions)
@@ -775,6 +787,23 @@ workflow SAREK {
             params.joint_mutect2,
             params.wes
         )
+
+        // MUSVAR:
+        if (params.musvar) {
+            MUS_VAR(
+                cram_variant_calling_normal_to_cross,
+                cram_variant_calling_pair_to_cross,
+                cram_variant_calling_pair,
+                fasta,
+                fasta_fai,
+                intervals_bed_combined,
+                BAM_VARIANT_CALLING_SOMATIC_ALL.out.vcf_strelka,
+                BAM_VARIANT_CALLING_SOMATIC_ALL.out.vcf_mutect2,
+                BAM_VARIANT_CALLING_SOMATIC_ALL.out.vcf_freebayes,
+                bic_qc_reports
+            )
+            versions = versions.mix(MUS_VAR.out.versions)
+        }
 
         // POST VARIANTCALLING
         POST_VARIANTCALLING(BAM_VARIANT_CALLING_GERMLINE_ALL.out.vcf_all,
