@@ -1,5 +1,4 @@
 
-include { POST_STRELKA } from '../../../modules/bic/strelka/post_strelka'
 include { NORMALIZE_TAG_VCF as TAG_VCF_STRELKA } from '../../../modules/bic/normalize_tag_vcf'
 include { NORMALIZE_TAG_VCF as TAG_VCF_FREEBAYES } from '../../../modules/bic/normalize_tag_vcf'
 include { NORMALIZE_TAG_VCF as TAG_VCF_VARDICT } from '../../../modules/bic/normalize_tag_vcf'

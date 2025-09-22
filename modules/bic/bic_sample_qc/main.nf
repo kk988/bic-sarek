@@ -1,6 +1,6 @@
 process BIC_SAMPLE_QC {
     tag "QC"
-    label 'process_high' // change to low when testing is complete - using high to hang the pipeline if this fails.
+    label 'process_low'
 
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
         '/juno/bic/depot/singularity/r_xlsx_tidyverse/r_xlsx_tidyverse.simg' :

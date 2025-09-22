@@ -23,7 +23,7 @@ process GATK4_COLLECTHSMETRICS {
     def prefix = task.ext.prefix ?: "${meta.id}"
     def avail_mem = 3072
     if (!task.memory) {
-        log.info '[GATK BaseRecalibrator] Available memory not known - defaulting to 3GB. Specify process memory requirements to change this.'
+        log.info '[GATK CollectHsMetrics] Available memory not known - defaulting to 3GB. Specify process memory requirements to change this.'
     } else {
         avail_mem = (task.memory.mega*0.8).intValue()
     }
