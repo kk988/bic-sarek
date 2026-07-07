@@ -4,8 +4,8 @@ process GATK4_COLLECTINSERTSIZEMETRICS {
 
     conda "${moduleDir}/environment.yml"
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
-        '/juno/bic/depot/singularity/gatk_4.5.0.0_R/gatk_4.5.0.0_R3.6.2.simg':
-        '/juno/bic/depot/singularity/gatk_4.5.0.0_R/gatk_4.5.0.0_R3.6.2.simg' }"
+        '/data1/core001/rsrc/genomic/bic/singularity/gatk_4.5.0.0_R/gatk_4.5.0.0_R3.6.2.simg':
+        '/data1/core001/rsrc/genomic/bic/singularity/gatk_4.5.0.0_R/gatk_4.5.0.0_R3.6.2.simg' }"
 
     input:
     tuple val(meta), path(cram), path(cram_index)

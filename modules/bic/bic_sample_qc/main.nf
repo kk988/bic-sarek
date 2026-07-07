@@ -3,8 +3,8 @@ process BIC_SAMPLE_QC {
     label 'process_low'
 
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
-        '/juno/bic/depot/singularity/r_xlsx_tidyverse/r_xlsx_tidyverse.simg' :
-        '/juno/bic/depot/singularity/r_xlsx_tidyverse/r_xlsx_tidyverse.simg' }"
+        '/data1/core001/rsrc/genomic/bic/singularity/r_xlsx_tidyverse/r_xlsx_tidyverse.simg' :
+        '/data1/core001/rsrc/genomic/bic/singularity/r_xlsx_tidyverse/r_xlsx_tidyverse.simg' }"
 
     input:
     path reports
