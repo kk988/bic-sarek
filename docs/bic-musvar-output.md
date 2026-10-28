@@ -2,7 +2,7 @@
 
 ## Introduction <!-- omit in toc -->
 
-This output information is IN ADDITION to the original output.md found in this same directory. This should only include changes made to the bic-sarek pipeline made by BIC.
+This output information is IN ADDITION to the original [output.md](./output.md) found in this directory. This should only include changes made to the bic-sarek pipeline made by BIC.
 
 ### MusVar Pipeline
 
@@ -21,7 +21,6 @@ These QC steps as well as MarkDuplicates output (from nf-sarek) are sent to
 Variant calls from `strelka`, `vardict`, `mutect2`, and `freebayes` are sent through post processing steps which involves
 - [NormalizeTagVCF](#normalizetagvcf)
 - [VCF2MAF](#vcf2maf)
-- [MergeMAFs](#mergemaf)
 - [FilterMAF](#filtermaf)
 
 
@@ -43,7 +42,7 @@ Variant calls from `strelka`, `vardict`, `mutect2`, and `freebayes` are sent thr
 <details markdown="1">
 <summary>Output files for all samples</summary>
 
-**Output directory: `{outdir}/metrics/`**
+**Output directory: `{outdir}/metrics/picard/<sample>/`**
 - `{sample}_hs_metrics.txt`
 </details>
 
@@ -54,7 +53,7 @@ Variant calls from `strelka`, `vardict`, `mutect2`, and `freebayes` are sent thr
 <details markdown="1">
 <summary>Output files for all samples</summary>
 
-**Output directory: `{outdir}/metrics/`**
+**Output directory: `{outdir}/metrics/picard/<sample>/`**
 - `{sample}.as.txt`
 </details>
 
@@ -65,7 +64,7 @@ Variant calls from `strelka`, `vardict`, `mutect2`, and `freebayes` are sent thr
 <details markdown="1">
 <summary>Output files for all samples</summary>
 
-**Output directory: `{outdir}/metrics/`**
+**Output directory: `{outdir}/metrics/picard/<sample>/`**
 - `{sample}_is_metrics.txt`
 - `{sample}_is_histogram.pdf`
 </details>
@@ -77,7 +76,7 @@ This is an R script that combines important metrics gathered into a plot and exc
 <details markdown="1">
 <summary>Output files include all samples</summary>
 
-**Output directory: `{outdir}/bic/`**
+**Output directory: `{outdir}/metrics/bic/`**
 - `qcTable.xlsx`
 - `qcPlot.pdf`
 </details>
@@ -104,26 +103,14 @@ Set of commands normalizes the vcf files from all the various callers, and then 
 - `{tumor_normal_pair}_{caller}.maf`
 </details>
 
-### MergeMAF
-
-Quick script that will combine all MAF results for callers associated with tumor/normal pair
-
-<details markdown="1">
-<summary>Output files include all caller results for each sample</summary>
-
-**Output directory: `{outdir}/variant_calling/`**
-- `<tumor_normal_pair>merge.maf.tsv.gz` - Merged MAF gzipped
-- `<tumor_normal_pair>merge.maf.rda` - R data for this session
-</details>
-
 ### FilterMAF
 
-Rscript to filter maf data using rdata object from [MergeMAF](#mergemaf) output. Combines output from all merged MAFs into two outputs, mutationReport excel, as well as a merged unfiltered MAF file.
+The maf files for each sample are merged. Then it is filered for High Confidence variants. Combines output from all MAFs into two outputs, mutationReport excel, as well as a merged unfiltered MAF file.
 
 <details markdown="1">
 <summary>Output files include all samples</summary>
 
-**Output directory: `{outdir}/post/reports/`**
+**Output directory: `{outdir}/variant_calling/`**
 - `*_mutationReport_MusVarV1.xlsx` - mutation report excel
 - `*_MergedUnFiltered_MAF.txt` - All samples and callers maf results
 </details>
